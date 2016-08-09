@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.counties {
+  fill: none;
+}
+
+.states {
+  fill: none;
+  stroke: #fff;
+  stroke-linejoin: round;
+}
+
+.q0-9 { fill:rgb(247,251,255); }
+.q1-9 { fill:rgb(222,235,247); }
+.q2-9 { fill:rgb(198,219,239); }
+.q3-9 { fill:rgb(158,202,225); }
+.q4-9 { fill:rgb(107,174,214); }
+.q5-9 { fill:rgb(66,146,198); }
+.q6-9 { fill:rgb(33,113,181); }
+.q7-9 { fill:rgb(8,81,156); }
+.q8-9 { fill:rgb(8,48,107); }
+
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="//d3js.org/queue.v1.min.js"></script>
+<script src="//d3js.org/topojson.v1.min.js"></script>
+<script>
+
+var width = 960,
+    height = 600;
+
+/*d3.csv("LoansCounties.csv", function(data) {
+  data.forEach(function(d) {
+    d.UPB = +d.UPB;
+    d.count = +d.NumberofLoans;
+  });
+  console.log(data[0]);
+});
+*/
+
+var nodes = []; //[{"name":"State","region":"County","upb":[[0,0]]}];
+var n_state, n_county = "";
+var n_upb = [];
+
+var n_counts = [];
+var n_density = [];
+var n_numberofCounties = [];
+var i = 0;
+d3.csv("LoansCounties.csv", function(links) {
+
+   links = links.sort(function(a,b) {return +a.FIPS - +b.FIPS});
+   
+   n_state = links[0].State;
+   n_county = links[0].County;
+  // nodes[0].name = links[0].State;
+   //nodes[0].region = links[0].County;
+   // denseity = UPB/counts | numberofConties | UPB | region = state | name = state |
+   
+   links.forEach(function(link) { 
+      if (link.State == n_state)
+      {
+       n_county = link.County;
+       n_state = link.State;
+       
+// NumberofLoans,UPB,County,State
+// 1) need to take care of ", in the dollar amout"
+// 2) sart from 2009 if there is no data populate it with [0,0]  instead. 
+// 3) to see if circle sizes are big enough 
+      
+       checkForDates(+getYear(link.LoanAddedDate));
+       n_upb.push([+getYear(link.LoanAddedDate),+link.UPB]);
+       n_counts.push([+getYear(link.LoanAddedDate), +link.NumberofLoans]);
+       n_density.push([+getYear(link.LoanAddedDate), (+link.UPB)/(+link.NumberofLoans)])
+       n_numberofCounties.push([+getYear(link.LoanAddedDate), ++i])
+       
+      }
+      else
+      { 
+        
+        nodes.push(Makenode(n_state, n_density.sort(), n_numberofCounties.sort(),  n_upb.sort()));
+        n_upb = [];
+        n_counts = [];
+        n_density = [];
+        n_numberofCounties = [];
+        i = 0;
+        n_state = link.State;
+        n_county = link.County;
+
+        
+      }
+
+   });
+   
+  console.log(nodes);
+
+
+});
+
+function getYear(date)
+{
+  return date.split("/")[2];
+}
+
+function checkForDates(year)
+{
+  fillYear = 2008;
+  while (fillYear < year) {
+    
+    n_upb.push([fillYear,0]);
+    n_counts.push([fillYear, 0]);
+    n_density.push([fillYear, 0]);
+    
+    
+    fillYear++;
+  }
+
+}
+
+function nodeByName(value) {
+    return nodesByName[value] || (nodesByName[value] = {nodeName: value});
+  }
+
+function Makenode(state, denseity, no_counites, upbItems)
+{
+  var jtemp = [{"name":"State","denseity":[[0,0]],"numcounties":[[0,0]], "upb":[[0,0]]}];
+  jtemp[0].name = state;
+  jtemp[0].denseity = denseity;
+  jtemp[0].numcounties = no_counites;
+  jtemp[0].upb = upbItems;
+
+  return jtemp; 
+} 
+
+/*
+function toJson(csvData) {
+  var lines = csvData.split("\n");
+  var colNames = lines[0].split(",");
+  var records=[];
+  for(var i = 1; i < lines.length; i++) {
+    var record = {};
+    var bits = lines[i].split(",");
+    for (var j = 0 ; j < bits.length ; j++) {
+      record[colNames[j]] = bits[j];
+    }
+    records.push(record);
+  }
+  return records;
+}
+A simple test:
+
+csv="author,title,publishDate\nDan Simmons,Hyperion,1989\nDouglas Adams,The Hitchhiker's Guide to the Galaxy,1979";
+json = toJson(csv);
+console.log(JSON.stringify(json));
+/*
+
+/*
+d3.csv("LoansCounties.csv", function(links) {
+  var nodesByName = {};
+  var data = [];
+  var nodes;
+  // Create nodes for each unique source and target.
+  var parent = "UPB";
+  links = links.sort(function(a,b) {return +a.FIPS - +b.FIPS});
+  var start = links[0].State;
+  nodes = jtemp;
+  nodes[0].name = links[0].State;
+  nodes[0].region = links[0].County;
+  links.forEach(function(link) {
+    if (link.State == start)
+    {
+       var upb = [];
+       upb[0] = +link.year;
+       upb[1] = +link.UPB;
+       link.upb.push(upb);
+    }
+       
+    else
+    { 
+      start = link.State;
+      nodes = jtemp;
+      nodes[0].name = link.State;
+      nodes[0].region = link.County;
+    }
+  })
+
+});  
+
+d3.csv("LoansCounties.csv", function(links) {
+  var nodesByName = {};
+  var data = [];
+
+  // Create nodes for each unique source and target.
+  var parent = "UPB";
+  links = links.sort(function(a,b) {return +a.FIPS - +b.FIPS});
+  links.forEach(function(link) {
+    
+    var pair = [];
+    pair[0] = +link.year;
+    pair[1] = +link.UPB;
+    var child = link.UPB = nodeByName("UPB",pair),
+        child = link.State = nodeByName("State",link.State);
+        //child = link. = nodeByName(link.NumberofLoans);
+    if (parent.children) parent.children.push(child);
+    else parent.children = [child];
+  });
+
+  // Extract the root node.
+  var root = {"Income":links[0].UPB};
+
+  function nodeByName(nodeName, value) {
+    return nodesByName[value] || (nodesByName[value] = {nodeName: value});
+  }
+  console.log(nodesByName);
+});
+/*
+d3.select(self.frameElement).style("height", height + "px");
+*/
+
+</script>
